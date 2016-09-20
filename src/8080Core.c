@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "8080Core.h"
 #include "8080Opcodes.h"
@@ -35,23 +36,23 @@ static const char* lut_mnemonic[0x100]={
 int emulate8080 (int cycles)
 {
 	int cyclesDone = 0;
-	
-	while (cyclesDone < cycles) 
+
+	while (cyclesDone < cycles)
 	{
 		if (e8080.halt) {
 			printf("Halted!\n");
 			break;
 		}
-		
+
 		u8 opcode = fetch8();
-#ifdef DEBUG		
-		printf("[%04x] %s\n", e8080.PC, lut_mnemonic[opcode]);	
+#ifdef DEBUG
+		printf("[%04x] %s\n", e8080.PC, lut_mnemonic[opcode]);
 #endif
-		
+
 		opTbl[opcode].execute (opcode);
 		cyclesDone += opTbl[opcode].cycles;
 	}
-	
+
 	return cyclesDone;
 }
 
@@ -65,7 +66,7 @@ void reset8080 ()
 		if (e8080.ram[c].flag == FLAG_UNUSED)
 			continue;
 		if (e8080.ram[c].flag == FLAG_MIRROR)
-			continue;					
+			continue;
 		if (!e8080.ram[c].ptr)
 			e8080.ram[c].ptr = malloc(e8080.ram[c].size);
 		if (!e8080.ram[c].flag != FLAG_ROM)
@@ -78,13 +79,13 @@ int initalize8080 ()
 	FILE * romBank;
 	char *bankName[] = {"invaders.h", "invaders.g", "invaders.f", "invaders.e"};
 	int c;
-	
+
 	printf("Resetting the 8080...\n");
-	
+
 	reset8080();
-	
+
 	u8 *bankPtr = NULL;
-	
+
 	for (c = 0; c < 4; c++) {
 		if (e8080.ram[c].flag == FLAG_ROM) {
 			printf("ROM @ %#x (%#x) %p\n", e8080.ram[c].start, e8080.ram[c].size, e8080.ram[c].ptr);
@@ -92,10 +93,10 @@ int initalize8080 ()
 			break;
 		}
 	}
-			
+
 	if (!bankPtr)
 		die("No rom bank defined");
-			
+
 	for (c = 0; c < 4; c++) {
 		romBank = fopen(bankName[c], "rb");
 		if (!romBank) {
@@ -106,8 +107,8 @@ int initalize8080 ()
 		}
 		fclose(romBank);
 	}
-	
+
 	printf("Loaded the 4 rom banks...\n");
-	
+
 	return 1;
 }
