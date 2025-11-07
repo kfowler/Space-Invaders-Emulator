@@ -6,6 +6,9 @@
 #include "8080Core.h"
 #include "8080Opcodes.h"
 
+// Define the global e8080 CPU state
+e8080_t e8080;
+
 void causeInt (uint16_t address)
 {
 	if (e8080.IE) {

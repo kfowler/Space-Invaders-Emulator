@@ -5,7 +5,7 @@
 
 #include "8080Memory.h"
 
-struct {
+typedef struct {
 	/* Processor frequency MhZ */
 	int clock;
 	/* Halt flag */
@@ -40,7 +40,9 @@ struct {
 	/* Ports IO */
 	uint8_t (* portIn)(int port);
 	void (*portOut)(int port, uint8_t value);
-} e8080;
+} e8080_t;
+
+extern e8080_t e8080;
 
 #define FLAG_SIGN   (1 << 7)
 #define FLAG_ZERO   (1 << 6)
