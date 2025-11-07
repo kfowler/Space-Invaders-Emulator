@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "8080Core.h"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 static SDL_Window *win;
 static SDL_Renderer *renderer;
