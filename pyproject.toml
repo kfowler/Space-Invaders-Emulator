@@ -1,0 +1,87 @@
+[project]
+name = "space-invaders-gym"
+version = "0.1.0"
+description = "Space Invaders emulator with Gymnasium RL environment, optimized for MLX on Apple Silicon"
+authors = [
+    {name = "The Lemon Man", email = ""},
+    {name = "Claude", email = ""}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+keywords = ["reinforcement-learning", "gymnasium", "space-invaders", "emulator", "mlx", "apple-silicon"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "numpy>=1.24.0",
+    "gymnasium>=0.29.0",
+    "mlx>=0.0.9",
+    "pillow>=10.0.0",  # For image processing
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.7.0",
+    "ruff>=0.0.285",
+    "mypy>=1.5.0",
+]
+
+examples = [
+    "matplotlib>=3.7.0",
+    "tqdm>=4.66.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/kfowler/Space-Invaders-Emulator"
+Repository = "https://github.com/kfowler/Space-Invaders-Emulator"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "src/space_invaders_gym/**/*.py",
+    "libspaceinvaders.dylib",
+    "invaders.{e,f,g,h}",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/space_invaders_gym"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=space_invaders_gym --cov-report=term-missing"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
