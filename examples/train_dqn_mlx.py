@@ -44,6 +44,9 @@ class DQN(nn.Module):
         self.fc2 = nn.Linear(512, num_actions)
 
     def __call__(self, x):
+        # Convert from NCHW to NHWC (MLX expects channels-last)
+        x = mx.transpose(x, (0, 2, 3, 1))
+
         x = nn.relu(self.conv1(x))
         x = nn.relu(self.conv2(x))
         x = nn.relu(self.conv3(x))
@@ -113,7 +116,7 @@ def train_dqn(
     # Initialize networks
     policy_net = DQN(num_actions=env.action_space.n)
     target_net = DQN(num_actions=env.action_space.n)
-    target_net.load_weights(list(policy_net.parameters()))
+    target_net.update(dict(policy_net.parameters()))
 
     optimizer = optim.Adam(learning_rate=1e-4)
     replay_buffer = ReplayBuffer(capacity=10000)
@@ -148,10 +151,9 @@ def train_dqn(
             if np.random.random() < epsilon:
                 action = env.action_space.sample()
             else:
-                with mx.no_grad():
-                    state_mx = mx.array(state[None, ...])  # Add batch dimension
-                    q_values = policy_net(state_mx)
-                    action = int(mx.argmax(q_values[0]).item())
+                state_mx = mx.array(state[None, ...])  # Add batch dimension
+                q_values = policy_net(state_mx)
+                action = int(mx.argmax(q_values[0]).item())
 
             # Take step
             next_state, reward, terminated, truncated, info = env.step(action)
@@ -176,10 +178,10 @@ def train_dqn(
                     current_q = policy_net(states)
                     current_q = mx.take_along_axis(current_q, actions[:, None], axis=1).squeeze()
 
-                    with mx.no_grad():
-                        next_q = target_net(next_states)
-                        max_next_q = mx.max(next_q, axis=1)
-                        target_q = rewards + gamma * max_next_q * (1 - dones)
+                    # Compute target Q-values (stop gradient)
+                    next_q = target_net(next_states)
+                    max_next_q = mx.max(next_q, axis=1)
+                    target_q = mx.stop_gradient(rewards + gamma * max_next_q * (1 - dones))
 
                     loss = nn.losses.mse_loss(current_q, target_q)
                     return loss
@@ -213,7 +215,7 @@ def train_dqn(
 
         # Update target network
         if (episode + 1) % target_update == 0:
-            target_net.load_weights(list(policy_net.parameters()))
+            target_net.update(dict(policy_net.parameters()))
             print("  → Updated target network")
 
     env.close()
