@@ -202,6 +202,9 @@ class SpaceInvadersEmulator:
         lib.si_api_get_cycle_count.argtypes = []
         lib.si_api_get_cycle_count.restype = ctypes.c_uint64
 
+        lib.si_api_read_ram.argtypes = [ctypes.c_uint16]
+        lib.si_api_read_ram.restype = ctypes.c_uint8
+
     def __del__(self) -> None:
         """Cleanup emulator resources."""
         if hasattr(self, "_initialized") and self._initialized:
@@ -306,9 +309,7 @@ class SpaceInvadersEmulator:
         size = SCREEN_WIDTH * SCREEN_HEIGHT
         buffer = np.zeros(size, dtype=np.uint8)
 
-        self.lib.si_api_get_framebuffer_gray(
-            buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))
-        )
+        self.lib.si_api_get_framebuffer_gray(buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)))
 
         return buffer.reshape((SCREEN_HEIGHT, SCREEN_WIDTH))
 
@@ -385,3 +386,14 @@ class SpaceInvadersEmulator:
             Cycle count
         """
         return self.lib.si_api_get_cycle_count()
+
+    def read_ram(self, address: int) -> int:
+        """Read a byte from RAM (for debugging).
+
+        Args:
+            address: Memory address to read (0x0000-0xFFFF)
+
+        Returns:
+            Byte value at address
+        """
+        return self.lib.si_api_read_ram(address)

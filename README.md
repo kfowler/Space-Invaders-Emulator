@@ -125,6 +125,44 @@ With `frame_stack=4`, shapes become `(4, 224, 256)`, `(4, 84, 84)`, etc.
 
 ## Advanced Features
 
+### Structured State Observations
+
+Access game state directly without parsing pixels:
+
+```python
+from space_invaders_gym.emulator import SpaceInvadersEmulator
+
+emu = SpaceInvadersEmulator()
+emu.reset()
+
+# Get structured state
+player_x = emu.lib.si_api_get_player_x()
+player_y = emu.lib.si_api_get_player_y()
+player_alive = emu.lib.si_api_get_player_alive()
+
+# Get alien grid (55 bytes: 1=alive, 0=dead)
+import ctypes
+alien_grid = (ctypes.c_uint8 * 55)()
+emu.lib.si_api_get_alien_grid(alien_grid)
+alive_count = sum(alien_grid)
+
+# Get shot positions
+x, y = ctypes.c_uint8(), ctypes.c_uint8()
+shot_active = emu.lib.si_api_get_player_shot(ctypes.byref(x), ctypes.byref(y))
+if shot_active:
+    print(f"Player shot at ({x.value}, {y.value})")
+
+# Get alien shots
+rolling_active = emu.lib.si_api_get_rolling_shot(ctypes.byref(x), ctypes.byref(y))
+plunger_active = emu.lib.si_api_get_plunger_shot(ctypes.byref(x), ctypes.byref(y))
+squiggly_active = emu.lib.si_api_get_squiggly_shot(ctypes.byref(x), ctypes.byref(y))
+
+# Check UFO
+ufo_active = emu.lib.si_api_get_ufo_active(ctypes.byref(x), ctypes.byref(y))
+```
+
+See `docs/RAM_MAP.md` for complete memory layout documentation.
+
 ### Save/Load States (Curriculum Learning)
 
 ```python
@@ -297,13 +335,13 @@ uv run mypy src/
 - [ ] Configuration file
 - [ ] Fullscreen mode
 
-### Phase 3: Polished
-- [ ] Structured state observations
-- [ ] RAM address documentation
-- [ ] Performance optimizations
-- [ ] Comprehensive documentation
-- [ ] DQN training example with MLX
-- [ ] Curriculum learning examples
+### Phase 3: Polished ✅ (Complete)
+- [x] Structured state observations
+- [x] RAM address documentation (docs/RAM_MAP.md)
+- [x] Performance optimizations (1000+ FPS headless)
+- [x] Comprehensive documentation (docs/ARCHITECTURE.md, docs/TROUBLESHOOTING.md)
+- [x] DQN training example with MLX (examples/train_dqn_mlx.py)
+- [x] Curriculum learning examples (examples/curriculum_learning.py)
 
 ## Technical Details
 

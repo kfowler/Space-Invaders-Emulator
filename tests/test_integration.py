@@ -144,8 +144,8 @@ class TestSpaceInvadersIntegration:
 
     def test_save_load_state(self) -> None:
         """Test save/load state functionality."""
-        import tempfile
         import os
+        import tempfile
 
         env = gym.make("SpaceInvaders-v0")
         obs1, info1 = env.reset(seed=42)

@@ -145,8 +145,18 @@ void si_destroy(void) {
 }
 
 void si_reset(void) {
+    // Save critical pointers (reset8080 clears the entire e8080 structure)
+    Mem *saved_ram = e8080.ram;
+    uint8_t (*saved_portIn)(int) = e8080.portIn;
+    void (*saved_portOut)(int, uint8_t) = e8080.portOut;
+
     // Reset CPU
     reset8080(0x0001);
+
+    // Restore critical pointers
+    e8080.ram = saved_ram;
+    e8080.portIn = saved_portIn;
+    e8080.portOut = saved_portOut;
 
     // Reset hardware state
     si_state.shift_reg = 0x0000;
@@ -346,45 +356,116 @@ void si_get_framebuffer_grayscale(uint8_t *buffer) {
 // For now, returning placeholder values. Will implement in Phase 3.
 
 uint32_t si_get_score(void) {
-    // TODO: Reverse engineer score location in RAM
-    // Space Invaders stores score as BCD (Binary Coded Decimal)
-    // Typical location: around 0x20F0-0x20F4 for player 1
+    // Space Invaders stores P1 score at 0x20F8 (LSB) and 0x20F9 (MSB) as BCD
+    // Source: computerarcheology.com/Arcade/SpaceInvaders/RAMUse.html
 
-    // For now, read a known location (this is a guess - needs verification)
-    // Score is typically stored as 4 BCD digits
-    uint16_t score_addr = 0x20F0;  // Placeholder address
+    uint8_t bcd_lsb = readByte(0x20F8);  // Lower 2 digits
+    uint8_t bcd_msb = readByte(0x20F9);  // Upper 2 digits
 
-    uint32_t score = 0;
-    for (int i = 0; i < 4; i++) {
-        uint8_t bcd = readByte(score_addr + i);
-        score = score * 100 + ((bcd >> 4) * 10) + (bcd & 0x0F);
-    }
+    uint32_t score = ((bcd_msb >> 4) * 1000) +
+                     ((bcd_msb & 0x0F) * 100) +
+                     ((bcd_lsb >> 4) * 10) +
+                     (bcd_lsb & 0x0F);
 
     return score;
 }
 
 int si_get_lives(void) {
-    // TODO: Reverse engineer lives location in RAM
-    // Typical location: single byte around 0x20F8
+    // Space Invaders stores P1 ships remaining at 0x21FF
+    // This is "ships remaining AFTER current dies" so we need to add 1 if player alive
+    // Source: computerarcheology.com/Arcade/SpaceInvaders/RAMUse.html
 
-    uint16_t lives_addr = 0x20F8;  // Placeholder address
-    uint8_t lives = readByte(lives_addr);
+    uint8_t ships_remaining = readByte(0x21FF);  // Reserve ships
+    uint8_t player_alive = readByte(0x20E7);     // 1 if alive, 0 if dead
 
-    // Lives are usually stored as 0-6
-    if (lives > 6) return 3;  // Default if invalid
-    return lives;
+    // Total lives = reserve ships + current ship (if alive)
+    int total_lives = ships_remaining + (player_alive ? 1 : 0);
+
+    // Lives should be 0-6
+    if (total_lives > 6) return 0;
+    return total_lives;
 }
 
 bool si_is_game_over(void) {
-    // Game is over when lives reach 0
-    // For now, check if emulator halted or lives depleted
-    return e8080.halt || (si_get_lives() == 0);
+    // Game is over when:
+    // 1. Emulator halted, OR
+    // 2. Both player is dead AND no reserve ships
+    uint8_t ships_remaining = readByte(0x21FF);  // Reserve ships
+    uint8_t player_alive = readByte(0x20E7);     // 1 if alive, 0 if dead
+
+    return e8080.halt || (player_alive == 0 && ships_remaining == 0);
 }
 
 int si_get_level(void) {
     // TODO: Reverse engineer level/wave counter
     // For now, estimate based on frame count (placeholder)
     return (si_state.frame_count / 3600) + 1;  // ~60 seconds per level
+}
+
+// === Structured State Observations ===
+
+uint8_t si_get_player_x(void) {
+    return readByte(0x201B);  // playerXr
+}
+
+uint8_t si_get_player_y(void) {
+    return readByte(0x201A);  // playerYr
+}
+
+bool si_get_player_alive(void) {
+    return readByte(0x20E7) != 0;  // player1Alive
+}
+
+void si_get_alien_grid(uint8_t *grid) {
+    // Read 55 alien alive flags from RAM
+    for (int i = 0; i < 55; i++) {
+        grid[i] = readByte(0x2100 + i);
+    }
+}
+
+uint8_t si_get_alien_count(void) {
+    return readByte(0x2082);  // alienCount
+}
+
+uint8_t si_get_player_shot(uint8_t *x, uint8_t *y) {
+    uint8_t status = readByte(0x2025);  // plyrShotStatus
+    if (x) *x = readByte(0x202A);  // obj1CoorXr
+    if (y) *y = readByte(0x2029);  // obj1CoorYr
+    return status;
+}
+
+uint8_t si_get_rolling_shot(uint8_t *x, uint8_t *y) {
+    // Check if shot is active (Y != 0 usually means active)
+    uint8_t shot_y = readByte(0x203D);  // rolShotYr
+    uint8_t shot_x = readByte(0x203E);  // rolShotXr
+    if (x) *x = shot_x;
+    if (y) *y = shot_y;
+    return (shot_y != 0) ? 1 : 0;
+}
+
+uint8_t si_get_plunger_shot(uint8_t *x, uint8_t *y) {
+    uint8_t shot_y = readByte(0x204D);  // pluShotYr
+    uint8_t shot_x = readByte(0x204E);  // pluShotXr
+    if (x) *x = shot_x;
+    if (y) *y = shot_y;
+    return (shot_y != 0) ? 1 : 0;
+}
+
+uint8_t si_get_squiggly_shot(uint8_t *x, uint8_t *y) {
+    uint8_t shot_y = readByte(0x205D);  // squShotYr
+    uint8_t shot_x = readByte(0x205E);  // squShotXr
+    if (x) *x = shot_x;
+    if (y) *y = shot_y;
+    return (shot_y != 0) ? 1 : 0;
+}
+
+bool si_get_ufo_active(uint8_t *x, uint8_t *y) {
+    bool active = readByte(0x2084) != 0;  // saucerActive
+    if (active) {
+        if (x) *x = readByte(0x207C);  // UFO uses alien shot X register
+        if (y) *y = readByte(0x207B);  // UFO uses alien shot Y register
+    }
+    return active;
 }
 
 // === Configuration ===

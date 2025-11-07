@@ -10,7 +10,7 @@ Usage:
 """
 
 import time
-from typing import Dict, Any
+from typing import Any, Dict
 
 import gymnasium as gym
 import numpy as np
@@ -88,7 +88,7 @@ def main() -> None:
                 fps = step / elapsed if elapsed > 0 else 0
 
                 print(f"\n{'='*40}")
-                print(f"Episode finished!")
+                print("Episode finished!")
                 print(f"Reason: {'Game Over' if terminated else 'Truncated'}")
                 print(f"Steps: {step}")
                 print(f"Final Score: {info['score']}")

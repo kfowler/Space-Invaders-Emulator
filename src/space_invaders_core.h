@@ -114,6 +114,40 @@ bool si_is_game_over(void);
 // Get current level/wave
 int si_get_level(void);
 
+// === Structured State Observations ===
+
+// Get player X position (0-255)
+uint8_t si_get_player_x(void);
+
+// Get player Y position (0-255)
+uint8_t si_get_player_y(void);
+
+// Check if player is alive
+bool si_get_player_alive(void);
+
+// Get alien grid state (55 bytes: 1=alive, 0=dead)
+// Caller must provide buffer of size 55
+void si_get_alien_grid(uint8_t *grid);
+
+// Get alien count remaining
+uint8_t si_get_alien_count(void);
+
+// Get player shot position and status
+// Returns: 0=no shot, 1-5=shot active/exploding
+// X and Y are written to provided pointers (can be NULL)
+uint8_t si_get_player_shot(uint8_t *x, uint8_t *y);
+
+// Get alien shots (3 types: rolling, plunger, squiggly)
+// Each returns: 0=inactive, 1=active
+// X and Y are written to provided pointers (can be NULL)
+uint8_t si_get_rolling_shot(uint8_t *x, uint8_t *y);
+uint8_t si_get_plunger_shot(uint8_t *x, uint8_t *y);
+uint8_t si_get_squiggly_shot(uint8_t *x, uint8_t *y);
+
+// Check if UFO is active
+// X and Y are written to provided pointers if UFO active (can be NULL)
+bool si_get_ufo_active(uint8_t *x, uint8_t *y);
+
 // === Configuration ===
 
 // Set speed multiplier (1.0 = normal, 2.0 = 2x speed, 0 = uncapped)

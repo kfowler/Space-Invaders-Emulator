@@ -114,8 +114,27 @@ uint32_t si_api_get_frame_count(void);
 // Get total cycles executed
 uint64_t si_api_get_cycle_count(void);
 
+// === Debug ===
+
+// Read a byte from RAM (for debugging)
+uint8_t si_api_read_ram(uint16_t address);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif // SPACE_INVADERS_API_H
+
+// === Structured State Observations ===
+
+uint8_t si_api_get_player_x(void);
+uint8_t si_api_get_player_y(void);
+bool si_api_get_player_alive(void);
+void si_api_get_alien_grid(uint8_t *grid);
+uint8_t si_api_get_alien_count(void);
+uint8_t si_api_get_player_shot(uint8_t *x, uint8_t *y);
+uint8_t si_api_get_rolling_shot(uint8_t *x, uint8_t *y);
+uint8_t si_api_get_plunger_shot(uint8_t *x, uint8_t *y);
+uint8_t si_api_get_squiggly_shot(uint8_t *x, uint8_t *y);
+bool si_api_get_ufo_active(uint8_t *x, uint8_t *y);
+

@@ -4,7 +4,7 @@ This module provides a Gymnasium-compatible environment for reinforcement learni
 with the Space Invaders emulator.
 """
 
-from typing import Any, Dict, Optional, Tuple, Callable
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -12,14 +12,14 @@ from gymnasium import spaces
 from PIL import Image
 
 from space_invaders_gym.emulator import (
-    SpaceInvadersEmulator,
     BTN_COIN,
     BTN_LEFT,
-    BTN_RIGHT,
     BTN_P1_FIRE,
     BTN_P1_START,
-    SCREEN_WIDTH,
+    BTN_RIGHT,
     SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    SpaceInvadersEmulator,
 )
 
 
@@ -312,16 +312,34 @@ class SpaceInvadersEnv(gym.Env):
             # Load from save state (for curriculum learning)
             self.emulator.load_state(options["state_file"])
         else:
-            # Normal reset
-            self.emulator.reset()
+            # On first reset, initialize emulator
+            if not hasattr(self, "_emulator_initialized") or not self._emulator_initialized:
+                # First time: reset emulator and let ROM boot up
+                self.emulator.reset()
+                # Let ROM boot and show attract mode (need ~120 frames)
+                for _ in range(120):
+                    self.emulator.step_frame()
+                self._emulator_initialized = True
+            else:
+                # Subsequent resets: For now, just do a full emulator reset
+                # This ensures clean state but is slower (~120 frames)
+                # TODO: Implement save/load state for faster resets in Phase 3
+                self.emulator.reset()
+                for _ in range(120):  # ROM boot
+                    self.emulator.step_frame()
 
-        # Insert coin and start game
-        self.emulator.set_input(BTN_COIN)
-        self.emulator.step_frame()
-        self.emulator.set_input(BTN_P1_START)
-        self.emulator.step_frame()
-        self.emulator.set_input(0)
-        self.emulator.step_frame()
+            # Insert coin and start new game
+            self.emulator.set_input(BTN_COIN)
+            for _ in range(30):  # Hold coin
+                self.emulator.step_frame()
+
+            self.emulator.set_input(BTN_P1_START)
+            for _ in range(30):  # Hold start and wait for game to initialize
+                self.emulator.step_frame()
+
+            self.emulator.set_input(0)
+            for _ in range(10):  # A few more frames with no input
+                self.emulator.step_frame()
 
         # Reset episode state
         self.steps = 0
@@ -343,9 +361,7 @@ class SpaceInvadersEnv(gym.Env):
 
         return obs, info
 
-    def step(
-        self, action: Any
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    def step(self, action: Any) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """Execute one environment step.
 
         Args:
@@ -359,7 +375,10 @@ class SpaceInvadersEnv(gym.Env):
             info: Additional information
         """
         # Sticky actions (repeat previous action with some probability)
-        if self.repeat_action_probability > 0 and self.np_random.random() < self.repeat_action_probability:
+        if (
+            self.repeat_action_probability > 0
+            and self.np_random.random() < self.repeat_action_probability
+        ):
             action = self.last_action
         self.last_action = action
 
