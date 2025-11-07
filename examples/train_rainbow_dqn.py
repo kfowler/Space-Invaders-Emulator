@@ -355,14 +355,19 @@ def train_rainbow_dqn(
                 # Compute target Q-values for prioritization
                 current_q_np = policy_net(states)
                 current_q_np = mx.take_along_axis(current_q_np, actions[:, None], axis=1).squeeze()
+                mx.eval(current_q_np)
 
                 next_q_policy = policy_net(next_states)
                 next_actions = mx.argmax(next_q_policy, axis=1)
+                mx.eval(next_actions)
+
                 next_q_target = target_net(next_states)
                 next_q = mx.take_along_axis(next_q_target, next_actions[:, None], axis=1).squeeze()
                 target_q_np = mx.stop_gradient(rewards + (gamma**n_step) * next_q * (1 - dones))
+                mx.eval(target_q_np)
 
                 td_errors = current_q_np - target_q_np
+                mx.eval(td_errors)
 
                 # Compute loss with importance sampling weights
                 def loss_fn(params):
@@ -380,9 +385,24 @@ def train_rainbow_dqn(
                 loss, grads = mx.value_and_grad(loss_fn)(dict(policy_net.parameters()))
                 optimizer.update(policy_net, grads)
                 mx.eval(policy_net.parameters())
+                mx.eval(loss)
 
-                # Update priorities with TD errors
-                replay_buffer.update_priorities(indices, td_errors.tolist())
+                # Update priorities with TD errors (convert to list and free MLX array)
+                td_errors_list = td_errors.tolist()
+                del (
+                    td_errors,
+                    current_q_np,
+                    next_q_policy,
+                    next_actions,
+                    next_q_target,
+                    next_q,
+                    target_q_np,
+                )
+                replay_buffer.update_priorities(indices, td_errors_list)
+
+                # Periodic memory cleanup
+                if train_steps % 100 == 0:
+                    mx.eval(policy_net.parameters(), target_net.parameters())
 
             if done:
                 break
@@ -408,6 +428,9 @@ def train_rainbow_dqn(
             f"FPS: {fps:5.0f} | "
             f"Buffer: {len(replay_buffer)}"
         )
+
+        # Memory cleanup every episode
+        mx.eval(policy_net.parameters(), target_net.parameters())
 
         # Update target network
         if (episode + 1) % target_update == 0:
